@@ -1,0 +1,45 @@
+name: Build MW4530R USB OpenWrt
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Init feed and config
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+          cat > .config <<EOF
+          CONFIG_TARGET_ath79=y
+          CONFIG_TARGET_ath79_generic=y
+          CONFIG_TARGET_ath79_generic_DEVICE_mercury_mw4530r-v1=y
+
+          CONFIG_TARGET_ROOTFS_SQUASHFS=y
+
+          EOF
+
+          make defconfig
+
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            dl
+            build_dir
+          key: openwrt-${{ github.run_id }}
+
+      - name: Build firmware
+        run: make -j$(nproc)
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: MW4530R-USB-Firmware
+          path: bin/targets/ath79/generic/*sysupgrade*.bin
